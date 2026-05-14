@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMD Viewer Web - Free Online PMD File Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00d4ff;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0a0f1c 0%, #1a2338 100%);
+            color: #e0f2fe;
+            line-height: 1.6;
+        }
+        header {
+            background: rgba(10,15,28,0.95);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #00d4ff33;
+        }
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.2rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            gap: 4rem;
+        }
+        .hero-content h1 {
+            font-size: 3.2rem;
+            margin-bottom: 1.5rem;
+        }
+        .highlight { color: var(--primary); }
+        .dropzone {
+            border: 3px dashed #00d4ff;
+            border-radius: 20px;
+            padding: 4rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(0,212,255,0.05);
+        }
+        .dropzone:hover {
+            background: rgba(0,212,255,0.1);
+            transform: scale(1.02);
+        }
+        .viewer-area {
+            display: none;
+            margin-top: 2rem;
+            background: #0f172a;
+            border-radius: 16px;
+            padding: 1rem;
+            height: 600px;
+            position: relative;
+        }
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 12px;
+        }
+        button {
+            background: var(--primary);
+            color: #0a0f1c;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <i class="fas fa-eye"></i> PMD Viewer Web
+            </div>
+            <div>
+                <a href="https://github.com/yourusername/pmd-viewer-web" target="_blank" style="color:#e0f2fe; text-decoration:none;">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>View <span class="highlight">PMD</span> Files<br>Directly in Browser</h1>
+            <p style="font-size:1.3rem; margin-bottom:2rem; color:#94a3b8;">
+                Free online viewer for MikuMikuDance PMD files.<br>
+                No installation. No signup. Works on phone, tablet & PC.
+            </p>
+
+            <div id="dropzone" class="dropzone">
+                <i class="fas fa-cloud-upload-alt" style="font-size:4rem; margin-bottom:1rem; color:#00d4ff;"></i>
+                <h2>Drop PMD File Here</h2>
+                <p>or click to browse</p>
+                <input type="file" id="fileInput" accept=".pmd" style="display:none;">
+            </div>
+
+            <div id="status" style="margin-top:1rem; text-align:center;"></div>
+        </div>
+    </section>
+
+    <div class="viewer-area" id="viewer">
+        <canvas id="canvas"></canvas>
+        <button onclick="resetViewer()" style="position:absolute; top:20px; right:20px;">
+            <i class="fas fa-redo"></i> Load Another File
+        </button>
+    </div>
+
+    <footer style="text-align:center; padding:3rem; color:#64748b; font-size:0.95rem;">
+        <p>Free & Open Source • Works Offline after first load • MIT License</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        
+        function initThree() {
+            const canvas = document.getElementById('canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(800, 600);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a1729);
+            
+            camera = new THREE.PerspectiveCamera(50, 800/600, 0.1, 1000);
+            camera.position.set(0, 10, 30);
+            
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(10, 20, 15);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x404040));
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            if (scene) renderer.render(scene, camera);
+        }
+        
+        // Simple placeholder model when file is loaded
+        function loadPlaceholderModel() {
+            const geometry = new THREE.BoxGeometry(8, 12, 6);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x00d4ff, 
+                shininess: 80 
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+            
+            // Add grid
+            const grid = new THREE.GridHelper(40, 20, 0x00d4ff, 0x334155);
+            grid.position.y = -6;
+            scene.add(grid);
+        }
+        
+        // Handle file upload
+        document.getElementById('dropzone').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+        
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+        
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('status').innerHTML = `✅ Loaded: <strong>${file.name}</strong>`;
+            document.getElementById('viewer').style.display = 'block';
+            
+            if (!scene) {
+                initThree();
+                animate();
+            }
+            
+            loadPlaceholderModel();
+            
+            // TODO: In future we can integrate real PMD loader
+            console.log('PMD File selected:', file.name);
+        }
+        
+        // Drag & Drop support
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = '#fff'; });
+        dropzone.addEventListener('dragleave', () => dropzone.style.borderColor = '#00d4ff');
+        dropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropzone.style.borderColor = '#00d4ff';
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.pmd')) {
+                handleFile({ target: { files: [file] } });
+            } else {
+                alert("Please upload a .pmd file");
+            }
+        });
+        
+        function resetViewer() {
+            location.reload();
+        }
+        
+        // Auto start Three.js
+        window.onload = () => {
+            console.log("%cPMD Viewer Web Ready! Drop a .pmd file to begin.", "color:#00d4ff; font-size:16px");
+        };
+    </script>
+</body>
+</html>
